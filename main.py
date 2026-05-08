@@ -9,17 +9,15 @@ from database import SessionLocal, engine
 from models import Base, Product
 from sqlalchemy.orm import Session
 
-# load env
+# =========================
+# LOAD ENV
+# =========================
 load_dotenv()
 
+# =========================
+# APP
+# =========================
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # =========================
 # CORS FIX
@@ -32,12 +30,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# OpenAI client
+# =========================
+# OPENAI
+# =========================
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# create tables
+# =========================
+# CREATE TABLES
+# =========================
 Base.metadata.create_all(bind=engine)
-
 
 # =========================
 # HOME
@@ -45,7 +46,6 @@ Base.metadata.create_all(bind=engine)
 @app.get("/")
 def home():
     return {"message": "AI SaaS is running 🚀"}
-
 
 # =========================
 # ANALYZE PRODUCT
@@ -74,14 +74,14 @@ Reason: short
 
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
 
         result = response.choices[0].message.content
 
-        # =========================
-        # SCORE SYSTEM
-        # =========================
+        # SCORE
         score = (
             product['trend'] * 5 +
             product['margin'] * 1.5 -
@@ -90,11 +90,13 @@ Reason: short
 
         score = max(0, min(100, round(score)))
 
-        verdict = "WINNER" if "WINNER" in result.upper() else "AVOID"
+        verdict = (
+            "WINNER"
+            if "WINNER" in result.upper()
+            else "AVOID"
+        )
 
-        # =========================
-        # SAVE TO DB
-        # =========================
+        # SAVE DB
         new_product = Product(
             name=product['name'],
             verdict=verdict,
@@ -112,12 +114,14 @@ Reason: short
             "result": result
         }
 
+    except Exception as e:
+        return {"error": str(e)}
+
     finally:
         db.close()
 
-
 # =========================
-# GET ALL PRODUCTS
+# GET PRODUCTS
 # =========================
 @app.get("/products")
 def get_products():
